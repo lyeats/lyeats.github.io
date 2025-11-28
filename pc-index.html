@@ -1,0 +1,2043 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>租金管理系统</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1a56db',
+                        secondary: '#64748b',
+                        success: '#059669',
+                        warning: '#d97706',
+                        danger: '#dc2626',
+                        info: '#0ea5e9',
+                        light: '#f3f4f6',
+                        dark: '#1f2937'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-all {
+                transition-property: all;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 150ms;
+            }
+            .sidebar-active {
+                @apply bg-primary text-white;
+            }
+            .card-hover {
+                @apply hover:shadow-lg transition-all;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded transition-all;
+            }
+            .btn-secondary {
+                @apply bg-secondary hover:bg-secondary/90 text-white font-medium py-2 px-4 rounded transition-all;
+            }
+            .btn-success {
+                @apply bg-success hover:bg-success/90 text-white font-medium py-2 px-4 rounded transition-all;
+            }
+            .btn-danger {
+                @apply bg-danger hover:bg-danger/90 text-white font-medium py-2 px-4 rounded transition-all;
+            }
+            .btn-outline {
+                @apply border border-gray-300 hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded transition-all;
+            }
+            .form-input {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary;
+            }
+            .form-label {
+                @apply block text-sm font-medium text-gray-700 mb-1;
+            }
+            .badge {
+                @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+            }
+            .badge-success {
+                @apply bg-success/20 text-success;
+            }
+            .badge-warning {
+                @apply bg-warning/20 text-warning;
+            }
+            .badge-danger {
+                @apply bg-danger/20 text-danger;
+            }
+            .badge-info {
+                @apply bg-info/20 text-info;
+            }
+            .table-header {
+                @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+            }
+            .table-cell {
+                @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+            }
+            .table-row {
+                @apply bg-white border-b hover:bg-gray-50;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- 登录页面 -->
+    <div id="login-page" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-primary">租金管理系统</h1>
+                <p class="text-gray-500 mt-2">请登录您的账户</p>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label for="email" class="form-label">邮箱</label>
+                    <input type="email" id="email" name="email" class="form-input" placeholder="请输入邮箱地址" required>
+                </div>
+                <div>
+                    <label for="password" class="form-label">密码</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="请输入密码" required>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                        <label for="remember-me" class="ml-2 block text-sm text-gray-900">记住我</label>
+                    </div>
+                    <a href="#" class="text-sm text-primary hover:text-primary/80">忘记密码?</a>
+                </div>
+                <div>
+                    <button type="submit" class="w-full btn-primary">登录</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 主应用界面 -->
+    <div id="app" class="hidden min-h-screen flex flex-col">
+        <!-- 顶部导航栏 -->
+        <header class="bg-white shadow-sm z-10">
+            <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <button id="sidebar-toggle" class="p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none">
+                            <i class="fa fa-bars text-xl"></i>
+                        </button>
+                        <h1 class="ml-4 text-xl font-bold text-gray-900">租金管理系统</h1>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="relative">
+                            <button id="notification-btn" class="p-2 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 focus:outline-none">
+                                <i class="fa fa-bell text-xl"></i>
+                                <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-danger"></span>
+                            </button>
+                        </div>
+                        <div class="ml-4 relative">
+                            <div>
+                                <button id="user-menu-btn" class="flex items-center max-w-xs rounded-full focus:outline-none">
+                                    <span class="sr-only">打开用户菜单</span>
+                                    <div class="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center">
+                                        <i class="fa fa-user"></i>
+                                    </div>
+                                    <span class="ml-2 text-sm font-medium text-gray-700 hidden md:block">管理员</span>
+                                    <i class="fa fa-chevron-down ml-1 text-xs text-gray-400"></i>
+                                </button>
+                            </div>
+                            <div id="user-menu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50">
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" id="profile-link">个人资料</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" id="settings-link">设置</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" id="logout-btn">退出登录</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden">
+            <!-- 侧边栏 -->
+            <aside id="sidebar" class="w-64 bg-white shadow-md transform transition-transform duration-300 ease-in-out">
+                <nav class="mt-5 px-2">
+                    <div class="space-y-1">
+                        <a href="#dashboard" class="sidebar-link sidebar-active group flex items-center px-2 py-2 text-sm font-medium rounded-md" data-target="dashboard-section">
+                            <i class="fa fa-dashboard w-6 text-center mr-3"></i>
+                            仪表盘
+                        </a>
+                        <a href="#users" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100" data-target="users-section">
+                            <i class="fa fa-users w-6 text-center mr-3"></i>
+                            用户管理
+                        </a>
+                        <a href="#tenants" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100" data-target="tenants-section">
+                            <i class="fa fa-user-o w-6 text-center mr-3"></i>
+                            租户管理
+                        </a>
+                        <a href="#contracts" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100" data-target="contracts-section">
+                            <i class="fa fa-file-text-o w-6 text-center mr-3"></i>
+                            租房合同
+                        </a>
+                        <a href="#rent" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100" data-target="rent-section">
+                            <i class="fa fa-money w-6 text-center mr-3"></i>
+                            租金记录
+                        </a>
+                        <a href="#settings" class="sidebar-link group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100" data-target="settings-section">
+                            <i class="fa fa-cog w-6 text-center mr-3"></i>
+                            系统设置
+                        </a>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- 主内容区域 -->
+            <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
+                <!-- 仪表盘 -->
+                <section id="dashboard-section" class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">仪表盘</h2>
+                        <div class="flex space-x-2">
+                            <button class="btn-outline">
+                                <i class="fa fa-download mr-1"></i> 导出报表
+                            </button>
+                            <button class="btn-primary">
+                                <i class="fa fa-plus mr-1"></i> 新建记录
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 统计卡片 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-white overflow-hidden shadow rounded-lg card-hover">
+                            <div class="p-5">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 bg-primary/10 rounded-md p-3">
+                                        <i class="fa fa-home text-primary text-xl"></i>
+                                    </div>
+                                    <div class="ml-5 w-0 flex-1">
+                                        <dl>
+                                            <dt class="text-sm font-medium text-gray-500 truncate">房产总数</dt>
+                                            <dd class="flex items-baseline">
+                                                <div class="text-2xl font-semibold text-gray-900">24</div>
+                                                <div class="ml-2 flex items-baseline text-sm font-semibold text-success">
+                                                    <i class="fa fa-arrow-up"></i>
+                                                    <span class="ml-1">3.2%</span>
+                                                </div>
+                                            </dd>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 px-5 py-3">
+                                <div class="text-sm">
+                                    <a href="#" class="font-medium text-primary hover:text-primary/80">查看详情</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white overflow-hidden shadow rounded-lg card-hover">
+                            <div class="p-5">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 bg-success/10 rounded-md p-3">
+                                        <i class="fa fa-user-o text-success text-xl"></i>
+                                    </div>
+                                    <div class="ml-5 w-0 flex-1">
+                                        <dl>
+                                            <dt class="text-sm font-medium text-gray-500 truncate">租户总数</dt>
+                                            <dd class="flex items-baseline">
+                                                <div class="text-2xl font-semibold text-gray-900">18</div>
+                                                <div class="ml-2 flex items-baseline text-sm font-semibold text-success">
+                                                    <i class="fa fa-arrow-up"></i>
+                                                    <span class="ml-1">5.3%</span>
+                                                </div>
+                                            </dd>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 px-5 py-3">
+                                <div class="text-sm">
+                                    <a href="#" class="font-medium text-success hover:text-success/80">查看详情</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white overflow-hidden shadow rounded-lg card-hover">
+                            <div class="p-5">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 bg-warning/10 rounded-md p-3">
+                                        <i class="fa fa-money text-warning text-xl"></i>
+                                    </div>
+                                    <div class="ml-5 w-0 flex-1">
+                                        <dl>
+                                            <dt class="text-sm font-medium text-gray-500 truncate">本月租金收入</dt>
+                                            <dd class="flex items-baseline">
+                                                <div class="text-2xl font-semibold text-gray-900">¥28,500</div>
+                                                <div class="ml-2 flex items-baseline text-sm font-semibold text-danger">
+                                                    <i class="fa fa-arrow-down"></i>
+                                                    <span class="ml-1">2.1%</span>
+                                                </div>
+                                            </dd>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 px-5 py-3">
+                                <div class="text-sm">
+                                    <a href="#" class="font-medium text-warning hover:text-warning/80">查看详情</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white overflow-hidden shadow rounded-lg card-hover">
+                            <div class="p-5">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 bg-danger/10 rounded-md p-3">
+                                        <i class="fa fa-exclamation-triangle text-danger text-xl"></i>
+                                    </div>
+                                    <div class="ml-5 w-0 flex-1">
+                                        <dl>
+                                            <dt class="text-sm font-medium text-gray-500 truncate">逾期租金</dt>
+                                            <dd class="flex items-baseline">
+                                                <div class="text-2xl font-semibold text-gray-900">¥5,200</div>
+                                                <div class="ml-2 flex items-baseline text-sm font-semibold text-success">
+                                                    <i class="fa fa-arrow-down"></i>
+                                                    <span class="ml-1">12.5%</span>
+                                                </div>
+                                            </dd>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 px-5 py-3">
+                                <div class="text-sm">
+                                    <a href="#" class="font-medium text-danger hover:text-danger/80">查看详情</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 图表区域 -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">租金收入趋势</h3>
+                            <div class="h-80">
+                                <canvas id="rentChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">房产状态分布</h3>
+                            <div class="h-80">
+                                <canvas id="propertyChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 最近活动 -->
+                    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                        <div class="px-4 py-5 sm:px-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">最近活动</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">系统中的最新操作记录</p>
+                        </div>
+                        <div class="border-t border-gray-200">
+                            <ul class="divide-y divide-gray-200">
+                                <li>
+                                    <div class="px-4 py-4 sm:px-6">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-primary truncate">新租户入住</p>
+                                            <div class="ml-2 flex-shrink-0 flex">
+                                                <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    已完成
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 sm:flex sm:justify-between">
+                                            <div class="sm:flex">
+                                                <p class="flex items-center text-sm text-gray-500">
+                                                    <i class="fa fa-user mr-2 text-gray-400"></i>
+                                                    张三
+                                                </p>
+                                                <p class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
+                                                    <i class="fa fa-home mr-2 text-gray-400"></i>
+                                                    阳光小区 A栋 302室
+                                                </p>
+                                            </div>
+                                            <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                                <i class="fa fa-clock-o mr-2 text-gray-400"></i>
+                                                <p>
+                                                    <span class="sr-only">于</span>
+                                                    2023-07-15
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="px-4 py-4 sm:px-6">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-primary truncate">租金支付</p>
+                                            <div class="ml-2 flex-shrink-0 flex">
+                                                <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    已完成
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 sm:flex sm:justify-between">
+                                            <div class="sm:flex">
+                                                <p class="flex items-center text-sm text-gray-500">
+                                                    <i class="fa fa-user mr-2 text-gray-400"></i>
+                                                    李四
+                                                </p>
+                                                <p class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
+                                                    <i class="fa fa-money mr-2 text-gray-400"></i>
+                                                    ¥3,200
+                                                </p>
+                                            </div>
+                                            <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                                <i class="fa fa-clock-o mr-2 text-gray-400"></i>
+                                                <p>
+                                                    <span class="sr-only">于</span>
+                                                    2023-07-10
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="px-4 py-4 sm:px-6">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-primary truncate">合同到期提醒</p>
+                                            <div class="ml-2 flex-shrink-0 flex">
+                                                <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                                    即将到期
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 sm:flex sm:justify-between">
+                                            <div class="sm:flex">
+                                                <p class="flex items-center text-sm text-gray-500">
+                                                    <i class="fa fa-user mr-2 text-gray-400"></i>
+                                                    王五
+                                                </p>
+                                                <p class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
+                                                    <i class="fa fa-home mr-2 text-gray-400"></i>
+                                                    花园小区 B栋 201室
+                                                </p>
+                                            </div>
+                                            <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                                <i class="fa fa-clock-o mr-2 text-gray-400"></i>
+                                                <p>
+                                                    <span class="sr-only">于</span>
+                                                    2023-08-05
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="px-4 py-4 sm:px-6">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-sm font-medium text-primary truncate">租金逾期</p>
+                                            <div class="ml-2 flex-shrink-0 flex">
+                                                <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                                    待处理
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 sm:flex sm:justify-between">
+                                            <div class="sm:flex">
+                                                <p class="flex items-center text-sm text-gray-500">
+                                                    <i class="fa fa-user mr-2 text-gray-400"></i>
+                                                    赵六
+                                                </p>
+                                                <p class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
+                                                    <i class="fa fa-money mr-2 text-gray-400"></i>
+                                                    ¥2,800
+                                                </p>
+                                            </div>
+                                            <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                                <i class="fa fa-clock-o mr-2 text-gray-400"></i>
+                                                <p>
+                                                    <span class="sr-only">于</span>
+                                                    2023-07-05
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 用户管理 -->
+                <section id="users-section" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">用户管理</h2>
+                        <div class="flex space-x-2">
+                            <button class="btn-primary" id="add-user-btn">
+                                <i class="fa fa-plus mr-1"></i> 添加用户
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 搜索和筛选 -->
+                    <div class="bg-white p-4 rounded-lg shadow flex flex-wrap gap-4">
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" class="form-input pl-10" placeholder="搜索用户...">
+                            </div>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有角色</option>
+                                <option value="admin">管理员</option>
+                                <option value="manager">房产管理者</option>
+                                <option value="finance">财务</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有状态</option>
+                                <option value="active">活跃</option>
+                                <option value="inactive">非活跃</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button class="btn-outline">
+                                <i class="fa fa-filter mr-1"></i> 筛选
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 用户列表 -->
+                    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="table-header">
+                                        <div class="flex items-center">
+                                            <input id="select-all" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        用户
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        邮箱
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        角色
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        状态
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        创建日期
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        操作
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center">
+                                                <i class="fa fa-user"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    管理员
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    超级管理员
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        admin@example.com
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-primary">超级管理员</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">活跃</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        2023-01-01
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+                                                <i class="fa fa-user"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    张经理
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    房产管理者
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        manager@example.com
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-info">房产管理者</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">活跃</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        2023-02-15
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+                                                <i class="fa fa-user"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    李财务
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    财务
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        finance@example.com
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-warning">财务</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">活跃</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        2023-03-20
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+                                                <i class="fa fa-user"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    王助理
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    房产管理者
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        assistant@example.com
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-info">房产管理者</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-danger">非活跃</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        2023-04-10
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    上一页
+                                </a>
+                                <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    下一页
+                                </a>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        显示 <span class="font-medium">1</span> 到 <span class="font-medium">4</span> 条，共 <span class="font-medium">4</span> 条记录
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">上一页</span>
+                                            <i class="fa fa-chevron-left"></i>
+                                        </a>
+                                        <a href="#" aria-current="page" class="z-10 bg-primary border-primary text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            1
+                                        </a>
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">下一页</span>
+                                            <i class="fa fa-chevron-right"></i>
+                                        </a>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 租户管理 -->
+                <section id="tenants-section" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">租户管理</h2>
+                        <div class="flex space-x-2">
+                            <button class="btn-primary" id="add-tenant-btn">
+                                <i class="fa fa-plus mr-1"></i> 添加租户
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 搜索和筛选 -->
+                    <div class="bg-white p-4 rounded-lg shadow flex flex-wrap gap-4">
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" class="form-input pl-10" placeholder="搜索租户...">
+                            </div>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有房产</option>
+                                <option value="sunshine">阳光小区</option>
+                                <option value="garden">花园小区</option>
+                                <option value="park">公园小区</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有状态</option>
+                                <option value="active">在租</option>
+                                <option value="inactive">已退租</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button class="btn-outline">
+                                <i class="fa fa-filter mr-1"></i> 筛选
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 租户列表 -->
+                    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="table-header">
+                                        <div class="flex items-center">
+                                            <input id="select-all-tenants" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        租户信息
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        联系方式
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        房产信息
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        状态
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        入住日期
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        操作
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+                                                <i class="fa fa-user"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    张三
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    ID: 10001
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">13800138000</div>
+                                        <div class="text-sm text-gray-500">zhangsan@example.com</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">阳光小区 A栋 302室</div>
+                                        <div class="text-sm text-gray-500">¥3,500/月</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">在租</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        2023-05-15
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">详情</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+                                                <i class="fa fa-user"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    李四
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    ID: 10002
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">13900139000</div>
+                                        <div class="text-sm text-gray-500">lisi@example.com</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">花园小区 B栋 201室</div>
+                                        <div class="text-sm text-gray-500">¥3,200/月</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">在租</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        2023-04-10
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">详情</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+                                                <i class="fa fa-user"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    王五
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    ID: 10003
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">13700137000</div>
+                                        <div class="text-sm text-gray-500">wangwu@example.com</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">公园小区 C栋 101室</div>
+                                        <div class="text-sm text-gray-500">¥2,800/月</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">在租</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        2023-06-01
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">详情</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <div class="h-10 w-10 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">
+                                                <i class="fa fa-user"></i>
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    赵六
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    ID: 10004
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">13600136000</div>
+                                        <div class="text-sm text-gray-500">zhaoliu@example.com</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">阳光小区 B栋 402室</div>
+                                        <div class="text-sm text-gray-500">¥3,000/月</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-danger">已退租</span>
+                                    </td>
+                                    <td class="table-cell">
+                                        2023-02-20
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">详情</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    上一页
+                                </a>
+                                <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    下一页
+                                </a>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        显示 <span class="font-medium">1</span> 到 <span class="font-medium">4</span> 条，共 <span class="font-medium">18</span> 条记录
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">上一页</span>
+                                            <i class="fa fa-chevron-left"></i>
+                                        </a>
+                                        <a href="#" aria-current="page" class="z-10 bg-primary border-primary text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            1
+                                        </a>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            2
+                                        </a>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            3
+                                        </a>
+                                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                            ...
+                                        </span>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            5
+                                        </a>
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">下一页</span>
+                                            <i class="fa fa-chevron-right"></i>
+                                        </a>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 租房合同 -->
+                <section id="contracts-section" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">租房合同</h2>
+                        <div class="flex space-x-2">
+                            <button class="btn-primary" id="add-contract-btn">
+                                <i class="fa fa-plus mr-1"></i> 新建合同
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 搜索和筛选 -->
+                    <div class="bg-white p-4 rounded-lg shadow flex flex-wrap gap-4">
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" class="form-input pl-10" placeholder="搜索合同...">
+                            </div>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有房产</option>
+                                <option value="sunshine">阳光小区</option>
+                                <option value="garden">花园小区</option>
+                                <option value="park">公园小区</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有状态</option>
+                                <option value="active">生效中</option>
+                                <option value="expired">已过期</option>
+                                <option value="pending">待生效</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button class="btn-outline">
+                                <i class="fa fa-filter mr-1"></i> 筛选
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 合同列表 -->
+                    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="table-header">
+                                        <div class="flex items-center">
+                                            <input id="select-all-contracts" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        合同编号
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        租户信息
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        房产信息
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        租金
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        合同期限
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        状态
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        操作
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm font-medium text-gray-900">HT-2023-0001</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">张三</div>
+                                        <div class="text-sm text-gray-500">13800138000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">阳光小区 A栋 302室</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">¥3,500/月</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">2023-05-15 至 2024-05-14</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">生效中</span>
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">查看</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm font-medium text-gray-900">HT-2023-0002</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">李四</div>
+                                        <div class="text-sm text-gray-500">13900139000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">花园小区 B栋 201室</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">¥3,200/月</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">2023-04-10 至 2024-04-09</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">生效中</span>
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">查看</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm font-medium text-gray-900">HT-2023-0003</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">王五</div>
+                                        <div class="text-sm text-gray-500">13700137000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">公园小区 C栋 101室</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">¥2,800/月</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">2023-06-01 至 2024-05-31</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">生效中</span>
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">查看</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm font-medium text-gray-900">HT-2023-0004</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">赵六</div>
+                                        <div class="text-sm text-gray-500">13600136000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">阳光小区 B栋 402室</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">¥3,000/月</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">2023-02-20 至 2023-08-19</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-warning">即将到期</span>
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">查看</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    上一页
+                                </a>
+                                <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    下一页
+                                </a>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        显示 <span class="font-medium">1</span> 到 <span class="font-medium">4</span> 条，共 <span class="font-medium">18</span> 条记录
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">上一页</span>
+                                            <i class="fa fa-chevron-left"></i>
+                                        </a>
+                                        <a href="#" aria-current="page" class="z-10 bg-primary border-primary text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            1
+                                        </a>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            2
+                                        </a>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            3
+                                        </a>
+                                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                            ...
+                                        </span>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            5
+                                        </a>
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">下一页</span>
+                                            <i class="fa fa-chevron-right"></i>
+                                        </a>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 租金记录 -->
+                <section id="rent-section" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">租金记录</h2>
+                        <div class="flex space-x-2">
+                            <button class="btn-primary" id="add-rent-btn">
+                                <i class="fa fa-plus mr-1"></i> 新增记录
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 搜索和筛选 -->
+                    <div class="bg-white p-4 rounded-lg shadow flex flex-wrap gap-4">
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fa fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" class="form-input pl-10" placeholder="搜索记录...">
+                            </div>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有房产</option>
+                                <option value="sunshine">阳光小区</option>
+                                <option value="garden">花园小区</option>
+                                <option value="park">公园小区</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有状态</option>
+                                <option value="paid">已支付</option>
+                                <option value="unpaid">未支付</option>
+                                <option value="partial">部分支付</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select class="form-input">
+                                <option value="">所有月份</option>
+                                <option value="2023-07">2023年7月</option>
+                                <option value="2023-06">2023年6月</option>
+                                <option value="2023-05">2023年5月</option>
+                            </select>
+                        </div>
+                        <div>
+                            <button class="btn-outline">
+                                <i class="fa fa-filter mr-1"></i> 筛选
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 租金记录列表 -->
+                    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="table-header">
+                                        <div class="flex items-center">
+                                            <input id="select-all-rents" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        记录编号
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        租户信息
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        房产信息
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        租金金额
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        支付期限
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        状态
+                                    </th>
+                                    <th scope="col" class="table-header">
+                                        操作
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm font-medium text-gray-900">RJ-2023-07-001</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">张三</div>
+                                        <div class="text-sm text-gray-500">13800138000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">阳光小区 A栋 302室</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">¥3,500</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">2023-07-01 至 2023-07-05</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">已支付</span>
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">查看</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm font-medium text-gray-900">RJ-2023-07-002</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">李四</div>
+                                        <div class="text-sm text-gray-500">13900139000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">花园小区 B栋 201室</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">¥3,200</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">2023-07-01 至 2023-07-05</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-success">已支付</span>
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">查看</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm font-medium text-gray-900">RJ-2023-07-003</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">王五</div>
+                                        <div class="text-sm text-gray-500">13700137000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">公园小区 C栋 101室</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">¥2,800</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">2023-07-01 至 2023-07-05</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-danger">未支付</span>
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">查看</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                                <tr class="table-row">
+                                    <td class="table-cell">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                                        </div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm font-medium text-gray-900">RJ-2023-07-004</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">赵六</div>
+                                        <div class="text-sm text-gray-500">13600136000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">阳光小区 B栋 402室</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">¥3,000</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <div class="text-sm text-gray-900">2023-07-01 至 2023-07-05</div>
+                                    </td>
+                                    <td class="table-cell">
+                                        <span class="badge badge-warning">部分支付</span>
+                                    </td>
+                                    <td class="table-cell text-sm font-medium">
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">查看</a>
+                                        <a href="#" class="text-primary hover:text-primary/80 mr-3">编辑</a>
+                                        <a href="#" class="text-danger hover:text-danger/80">删除</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                            <div class="flex-1 flex justify-between sm:hidden">
+                                <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    上一页
+                                </a>
+                                <a href="#" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                    下一页
+                                </a>
+                            </div>
+                            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-700">
+                                        显示 <span class="font-medium">1</span> 到 <span class="font-medium">4</span> 条，共 <span class="font-medium">24</span> 条记录
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">上一页</span>
+                                            <i class="fa fa-chevron-left"></i>
+                                        </a>
+                                        <a href="#" aria-current="page" class="z-10 bg-primary border-primary text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            1
+                                        </a>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            2
+                                        </a>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            3
+                                        </a>
+                                        <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                            ...
+                                        </span>
+                                        <a href="#" class="bg-white border-gray-300 text-gray-500 hover:bg-gray-50 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                            6
+                                        </a>
+                                        <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                            <span class="sr-only">下一页</span>
+                                            <i class="fa fa-chevron-right"></i>
+                                        </a>
+                                    </nav>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 系统设置 -->
+                <section id="settings-section" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">系统设置</h2>
+                    </div>
+
+                    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                        <div class="px-4 py-5 sm:px-6">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">基本设置</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">系统的基本配置信息</p>
+                        </div>
+                        <div class="border-t border-gray-200">
+                            <form id="settings-form" class="divide-y divide-gray-200">
+                                <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <div class="sm:col-span-3">
+                                        <label for="site-name" class="form-label">系统名称</label>
+                                        <input type="text" id="site-name" name="site-name" value="租金管理系统" class="form-input">
+                                    </div>
+                                </div>
+                                <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <div class="sm:col-span-3">
+                                        <label for="site-description" class="form-label">系统描述</label>
+                                        <textarea id="site-description" name="site-description" rows="3" class="form-input">高效管理多套房产的租赁流程，包括租户信息、合同管理、租金收取记录等</textarea>
+                                    </div>
+                                </div>
+                                <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <div class="sm:col-span-2">
+                                        <label for="email-from" class="form-label">发件人邮箱</label>
+                                        <input type="email" id="email-from" name="email-from" value="system@example.com" class="form-input">
+                                    </div>
+                                </div>
+                                <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <div class="sm:col-span-2">
+                                        <label for="notification-email" class="form-label">通知接收邮箱</label>
+                                        <input type="email" id="notification-email" name="notification-email" value="admin@example.com" class="form-input">
+                                    </div>
+                                </div>
+                                <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <div class="sm:col-span-2">
+                                        <label for="rent-due-days" class="form-label">租金到期提醒天数</label>
+                                        <input type="number" id="rent-due-days" name="rent-due-days" value="5" min="1" max="30" class="form-input">
+                                    </div>
+                                </div>
+                                <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <div class="sm:col-span-2">
+                                        <label for="contract-expire-days" class="form-label">合同到期提醒天数</label>
+                                        <input type="number" id="contract-expire-days" name="contract-expire-days" value="30" min="1" max="90" class="form-input">
+                                    </div>
+                                </div>
+                                <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                    <div class="sm:col-span-2">
+                                        <label for="late-fee-rate" class="form-label">逾期费用比率 (%)</label>
+                                        <input type="number" id="late-fee-rate" name="late-fee-rate" value="5" min="0" max="20" step="0.1" class="form-input">
+                                    </div>
+                                </div>
+                                <div class="px-4 py-5 sm:px-6">
+                                    <button type="submit" class="btn-primary">
+                                        保存设置
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modal-title" class="text-lg font-medium text-gray-900">模态框标题</h3>
+                <button id="modal-close" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div id="modal-content" class="px-6 py-4">
+                <!-- 模态框内容将通过JavaScript动态插入 -->
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <button id="modal-cancel" class="btn-outline">取消</button>
+                <button id="modal-confirm" class="btn-primary">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 登录表单提交
+            const loginForm = document.getElementById('login-form');
+            const loginPage = document.getElementById('login-page');
+            const app = document.getElementById('app');
+
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                // 简单的登录验证
+                if (email && password) {
+                    // 隐藏登录页面，显示主应用
+                    loginPage.classList.add('hidden');
+                    app.classList.remove('hidden');
+                    
+                    // 初始化图表
+                    initCharts();
+                }
+            });
+
+            // 侧边栏切换
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('-translate-x-full');
+            });
+
+            // 用户菜单切换
+            const userMenuBtn = document.getElementById('user-menu-btn');
+            const userMenu = document.getElementById('user-menu');
+            
+            userMenuBtn.addEventListener('click', function() {
+                userMenu.classList.toggle('hidden');
+            });
+
+            // 点击页面其他地方关闭用户菜单
+            document.addEventListener('click', function(e) {
+                if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+                    userMenu.classList.add('hidden');
+                }
+            });
+
+            // 退出登录
+            const logoutBtn = document.getElementById('logout-btn');
+            
+            logoutBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                app.classList.add('hidden');
+                loginPage.classList.remove('hidden');
+            });
+
+            // 侧边栏导航
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
+            const sections = document.querySelectorAll('main > section');
+            
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // 移除所有侧边栏链接的活动状态
+                    sidebarLinks.forEach(item => {
+                        item.classList.remove('sidebar-active');
+                        item.classList.add('text-gray-700', 'hover:bg-gray-100');
+                    });
+                    
+                    // 添加当前链接的活动状态
+                    this.classList.add('sidebar-active');
+                    this.classList.remove('text-gray-700', 'hover:bg-gray-100');
+                    
+                    // 隐藏所有内容区域
+                    sections.forEach(section => {
+                        section.classList.add('hidden');
+                    });
+                    
+                    // 显示目标内容区域
+                    const targetId = this.getAttribute('data-target');
+                    document.getElementById(targetId).classList.remove('hidden');
+                });
+            });
+
+            // 模态框控制
+            const modal = document.getElementById('modal');
+            const modalClose = document.getElementById('modal-close');
+            const modalCancel = document.getElementById('modal-cancel');
+            const modalConfirm = document.getElementById('modal-confirm');
+            
+            function showModal(title, content, confirmCallback) {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-content').innerHTML = content;
+                modal.classList.remove('hidden');
+                
+                // 设置确认按钮的回调函数
+                modalConfirm.onclick = function() {
+                    if (typeof confirmCallback === 'function') {
+                        confirmCallback();
+                    }
+                    hideModal();
+                };
+            }
+            
+            function hideModal() {
+                modal.classList.add('hidden');
+            }
+            
+            modalClose.addEventListener('click', hideModal);
+            modalCancel.addEventListener('click', hideModal);
+
+            // 添加用户按钮
+            const addUserBtn = document.getElementById('add-user-btn');
+            
+            addUserBtn.addEventListener('click', function() {
+                const content = `
+                    <form id="add-user-form" class="space-y-4">
+                        <div>
+                            <label for="user-name" class="form-label">用户名</label>
+                            <input type="text" id="user-name" name="user-name" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="user-email" class="form-label">邮箱</label>
+                            <input type="email" id="user-email" name="user-email" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="user-password" class="form-label">密码</label>
+                            <input type="password" id="user-password" name="user-password" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="user-role" class="form-label">角色</label>
+                            <select id="user-role" name="user-role" class="form-input" required>
+                                <option value="">请选择角色</option>
+                                <option value="admin">管理员</option>
+                                <option value="manager">房产管理者</option>
+                                <option value="finance">财务</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="user-status" class="form-label">状态</label>
+                            <select id="user-status" name="user-status" class="form-input" required>
+                                <option value="active">活跃</option>
+                                <option value="inactive">非活跃</option>
+                            </select>
+                        </div>
+                    </form>
+                `;
+                
+                showModal('添加用户', content, function() {
+                    // 模拟添加用户
+                    alert('用户添加成功！');
+                });
+            });
+
+            // 添加租户按钮
+            const addTenantBtn = document.getElementById('add-tenant-btn');
+            
+            addTenantBtn.addEventListener('click', function() {
+                const content = `
+                    <form id="add-tenant-form" class="space-y-4">
+                        <div>
+                            <label for="tenant-name" class="form-label">姓名</label>
+                            <input type="text" id="tenant-name" name="tenant-name" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="tenant-phone" class="form-label">手机号码</label>
+                            <input type="tel" id="tenant-phone" name="tenant-phone" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="tenant-email" class="form-label">邮箱</label>
+                            <input type="email" id="tenant-email" name="tenant-email" class="form-input">
+                        </div>
+                        <div>
+                            <label for="tenant-id" class="form-label">身份证号</label>
+                            <input type="text" id="tenant-id" name="tenant-id" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="tenant-property" class="form-label">房产信息</label>
+                            <select id="tenant-property" name="tenant-property" class="form-input" required>
+                                <option value="">请选择房产</option>
+                                <option value="sunshine-a-302">阳光小区 A栋 302室</option>
+                                <option value="garden-b-201">花园小区 B栋 201室</option>
+                                <option value="park-c-101">公园小区 C栋 101室</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="tenant-rent" class="form-label">租金 (元/月)</label>
+                            <input type="number" id="tenant-rent" name="tenant-rent" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="tenant-move-in" class="form-label">入住日期</label>
+                            <input type="date" id="tenant-move-in" name="tenant-move-in" class="form-input" required>
+                        </div>
+                    </form>
+                `;
+                
+                showModal('添加租户', content, function() {
+                    // 模拟添加租户
+                    alert('租户添加成功！');
+                });
+            });
+
+            // 添加合同按钮
+            const addContractBtn = document.getElementById('add-contract-btn');
+            
+            addContractBtn.addEventListener('click', function() {
+                const content = `
+                    <form id="add-contract-form" class="space-y-4">
+                        <div>
+                            <label for="contract-tenant" class="form-label">租户</label>
+                            <select id="contract-tenant" name="contract-tenant" class="form-input" required>
+                                <option value="">请选择租户</option>
+                                <option value="10001">张三 (ID: 10001)</option>
+                                <option value="10002">李四 (ID: 10002)</option>
+                                <option value="10003">王五 (ID: 10003)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="contract-property" class="form-label">房产信息</label>
+                            <select id="contract-property" name="contract-property" class="form-input" required>
+                                <option value="">请选择房产</option>
+                                <option value="sunshine-a-302">阳光小区 A栋 302室</option>
+                                <option value="garden-b-201">花园小区 B栋 201室</option>
+                                <option value="park-c-101">公园小区 C栋 101室</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="contract-rent" class="form-label">月租金 (元)</label>
+                            <input type="number" id="contract-rent" name="contract-rent" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="contract-deposit" class="form-label">押金 (元)</label>
+                            <input type="number" id="contract-deposit" name="contract-deposit" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="contract-start" class="form-label">合同开始日期</label>
+                            <input type="date" id="contract-start" name="contract-start" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="contract-end" class="form-label">合同结束日期</label>
+                            <input type="date" id="contract-end" name="contract-end" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="contract-payment-method" class="form-label">支付方式</label>
+                            <select id="contract-payment-method" name="contract-payment-method" class="form-input" required>
+                                <option value="">请选择支付方式</option>
+                                <option value="bank">银行转账</option>
+                                <option value="alipay">支付宝</option>
+                                <option value="wechat">微信支付</option>
+                                <option value="cash">现金</option>
+                            </select>
+                        </div>
+                    </form>
+                `;
+                
+                showModal('新建合同', content, function() {
+                    // 模拟新建合同
+                    alert('合同创建成功！');
+                });
+            });
+
+            // 添加租金记录按钮
+            const addRentBtn = document.getElementById('add-rent-btn');
+            
+            addRentBtn.addEventListener('click', function() {
+                const content = `
+                    <form id="add-rent-form" class="space-y-4">
+                        <div>
+                            <label for="rent-tenant" class="form-label">租户</label>
+                            <select id="rent-tenant" name="rent-tenant" class="form-input" required>
+                                <option value="">请选择租户</option>
+                                <option value="10001">张三 (ID: 10001)</option>
+                                <option value="10002">李四 (ID: 10002)</option>
+                                <option value="10003">王五 (ID: 10003)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="rent-property" class="form-label">房产信息</label>
+                            <select id="rent-property" name="rent-property" class="form-input" required>
+                                <option value="">请选择房产</option>
+                                <option value="sunshine-a-302">阳光小区 A栋 302室</option>
+                                <option value="garden-b-201">花园小区 B栋 201室</option>
+                                <option value="park-c-101">公园小区 C栋 101室</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="rent-amount" class="form-label">租金金额 (元)</label>
+                            <input type="number" id="rent-amount" name="rent-amount" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="rent-period" class="form-label">租赁周期</label>
+                            <select id="rent-period" name="rent-period" class="form-input" required>
+                                <option value="">请选择租赁周期</option>
+                                <option value="2023-07">2023年7月</option>
+                                <option value="2023-06">2023年6月</option>
+                                <option value="2023-05">2023年5月</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="rent-due-date" class="form-label">支付期限</label>
+                            <input type="date" id="rent-due-date" name="rent-due-date" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="rent-payment-method" class="form-label">支付方式</label>
+                            <select id="rent-payment-method" name="rent-payment-method" class="form-input" required>
+                                <option value="">请选择支付方式</option>
+                                <option value="bank">银行转账</option>
+                                <option value="alipay">支付宝</option>
+                                <option value="wechat">微信支付</option>
+                                <option value="cash">现金</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="rent-status" class="form-label">状态</label>
+                            <select id="rent-status" name="rent-status" class="form-input" required>
+                                <option value="unpaid">未支付</option>
+                                <option value="paid">已支付</option>
+                                <option value="partial">部分支付</option>
+                            </select>
+                        </div>
+                    </form>
+                `;
+                
+                showModal('新增租金记录', content, function() {
+                    // 模拟新增租金记录
+                    alert('租金记录添加成功！');
+                });
+            });
+
+            // 设置表单提交
+            const settingsForm = document.getElementById('settings-form');
+            
+            settingsForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('设置保存成功！');
+            });
+
+            // 初始化图表
+            function initCharts() {
+                // 租金收入趋势图
+                const rentCtx = document.getElementById('rentChart').getContext('2d');
+                const rentChart = new Chart(rentCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月'],
+                        datasets: [{
+                            label: '租金收入',
+                            data: [25000, 26500, 24000, 27000, 29000, 28000, 28500],
+                            backgroundColor: 'rgba(26, 86, 219, 0.1)',
+                            borderColor: '#1a56db',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    drawBorder: false
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // 房产状态分布图
+                const propertyCtx = document.getElementById('propertyChart').getContext('2d');
+                const propertyChart = new Chart(propertyCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['已出租', '空置', '维修中', '待装修'],
+                        datasets: [{
+                            data: [18, 4, 1, 1],
+                            backgroundColor: [
+                                '#1a56db',
+                                '#64748b',
+                                '#d97706',
+                                '#94a3b8'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        },
+                        cutout: '70%'
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
